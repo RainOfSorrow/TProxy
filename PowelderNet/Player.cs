@@ -7,7 +7,7 @@ namespace TProxy
 {
     class Player
     {
-        public byte playerid;
+        public byte playerid = 255;
 
         //Apperance
         public int skinVariant;
@@ -34,6 +34,9 @@ namespace TProxy
         public int HP;
         public int maxMP;
         public int MP;
+
+        //Proxy
+        public bool empty = true;
 
     }
 }

@@ -71,6 +71,10 @@ namespace TProxy
                 connection.tcp.Connect("127.0.0.1", TProxy.config.Servers[0].port);
                 connection.tcp.NoDelay = true;
                 connection.name = TProxy.config.Servers[0].name;
+
+                MemoryStream strm = PacketManager.Serialize(PacketTypes.ConnectRequest);
+                connection.tcp.Send(strm.ToArray(), strm.ToArray().Length, SocketFlags.None);
+
                 Thread fromserver = new Thread(new ParameterizedThreadStart(FromServer))
                 {
                     IsBackground = true
@@ -93,7 +97,8 @@ namespace TProxy
 
         private void Listener(object port)
         {
-
+            try
+            {
                 var lengthBuffer = new byte[2];
                 var packetTypeBuffer = new byte[1];
                 while (client.Receive(lengthBuffer, 2, SocketFlags.None) != 0)
@@ -107,9 +112,9 @@ namespace TProxy
                         readed += client.Receive(buffer, readed, dataLength - readed, SocketFlags.None);
                     }
 
-                    Console.WriteLine($"Client -> {packetType}");
 
-                    if (!PacketManager.Deserialize(packetType, buffer.Take(dataLength).ToArray(), this))
+
+                    if (!PacketManager.DeserializeFromPlayer(packetType, buffer.Take(dataLength).ToArray(), this))
                     {
                         while (connection == null || connection.tcp == null)
                             Thread.Sleep(15);
@@ -120,10 +125,15 @@ namespace TProxy
                             connection.tcp.Send(packetTypeBuffer, packetTypeBuffer.Length, SocketFlags.None);
                             connection.tcp.Send(buffer, dataLength, SocketFlags.None);
                         }
-                        
+
                     }
 
                 }
+            }
+            catch (SocketException)
+            {
+                
+            }
             
 
             Console.WriteLine($"({IP}) disconnected. [Exit]");
@@ -155,7 +165,6 @@ namespace TProxy
                         readed += connection.tcp.Receive(connection.buffer, readed, dataLength - readed, SocketFlags.None);
                     }
 
-
                     if (packetType == PacketTypes.WorldInfo)
                     {
                         connection.buffer[6] = 208;
@@ -164,7 +173,7 @@ namespace TProxy
                         connection.buffer[9] = 9;
                     }
 
-                    if (!PacketManager.FromServerDeserialize(packetType, connection.buffer.Take(dataLength).ToArray(), this)){
+                    if (!PacketManager.DeserializeFromServer(packetType, connection.buffer.Take(dataLength).ToArray(), this)){
                         client.Send(lengthBuffer, lengthBuffer.Length, SocketFlags.None);
                         client.Send(packetTypeBuffer, packetTypeBuffer.Length, SocketFlags.None);
                         client.Send(connection.buffer, dataLength, SocketFlags.None);
@@ -197,7 +206,7 @@ namespace TProxy
             }
             catch (SocketException)
             {
-                SendMessage("Wystapil problem");
+                SendMessage("[c/20b262:TProxy] [c/595959:»] Serwer jest wyłączony. Przenosze do [c/66ff66:Lobby].", 128, 128, 128);
                 ConnectTo(TProxy.config.Servers[0].port);
                 return;
             }
@@ -225,13 +234,11 @@ namespace TProxy
                     readed += connection.tcp.Receive(connection.buffer, readed, dataLength - readed, SocketFlags.None);
                 }
 
-                Console.WriteLine(packetType);
-
                 //2 -> Send packet t client and then go to NormalLoop
                 //1 -> Continue loop but don't send packet to Client
                 //0 -> Send packet to client and continue loop
 
-                isConnectedFully = PacketManager.TransferDeserialize(packetType, connection.buffer.Take(dataLength).ToArray(), this);
+                isConnectedFully = PacketManager.DeserializeFromTransfer(packetType, connection.buffer.Take(dataLength).ToArray(), this);
 
                 if (isConnectedFully != 1)
                 {
@@ -269,12 +276,9 @@ namespace TProxy
 
             connection.port = port;
 
-            //Utils.ClearPlayers(this);
-            //Utils.ClearNPCs(this);
-            //Utils.ClearItems(this);
-
-            //MemoryStream apperance = PacketManager.SerializeApperance(player);
-            //client.Send(apperance.ToArray(), apperance.ToArray().Length, SocketFlags.None);
+            Utils.ClearPlayers(this);
+            Utils.ClearNPCs(this);
+            Utils.ClearItems(this);
 
             SendData(PacketTypes.PlayerAddBuff, "", player.playerid, 149, 120);
 

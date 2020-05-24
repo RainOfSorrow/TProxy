@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -22,7 +23,7 @@ namespace TProxy.Packets
                     {
                         case PacketTypes.ConnectRequest:
                             {
-                                binary.Write("Terraria" + (object)227);
+                                binary.Write("Terraria" + (object)228);
                                 break;
                             }
                         case PacketTypes.Disconnect:
@@ -44,6 +45,7 @@ namespace TProxy.Packets
                             {
                                 binary.Write(number);
                                 text.Serialize(binary);
+                                binary.Write((byte)number2);
                                 break;
                             }
                         case PacketTypes.PlayerSpawn:
@@ -51,6 +53,8 @@ namespace TProxy.Packets
                                 binary.Write((byte)number);
                                 binary.Write((short)number2);
                                 binary.Write((short)number3);
+                                binary.Write((int)number4);
+                                binary.Write((byte)number5);
                                 break;
                             }
                         case PacketTypes.PlayerSpawnSelf:
@@ -95,9 +99,11 @@ namespace TProxy.Packets
                                 binary.Write((float)0);
                                 binary.Write((float)0);
                                 binary.Write((float)0);
+                                binary.Write((short)0);
                                 binary.Write((byte)0);
                                 binary.Write((byte)0);
-                                binary.Write((byte)0);
+                                for (int i = 0; i < 3; i++)
+                                    binary.Write((float)0);
                                 binary.Write((short)0);
                                 binary.Write((byte)4);
                                 binary.Write((int)0);
@@ -110,7 +116,7 @@ namespace TProxy.Packets
                                 binary.Write((byte)0);
                                 break;
                             }
-                        case PacketTypes.ItemDrop:
+                        case PacketTypes.UpdateItemDrop:
                             {
                                 binary.Write((short)number);
                                 binary.Write((float)0);
@@ -127,6 +133,12 @@ namespace TProxy.Packets
                             {
                                 binary.Write((byte)number);
                                 binary.Write((short)number2);
+                                break;
+                            }
+                        case PacketTypes.LoadNetModule:
+                            {
+                                binary.Write((ushort)number);
+                                binary.Write((byte)0);
                                 break;
                             }
                         default:
@@ -159,12 +171,12 @@ namespace TProxy.Packets
                     binary.Write(plr.name);
                     binary.Write(plr.hairDye);
 
-                    BitsByte hideVisual = 0;
+                   BitsByte hideVisual = 0;
                     for (int local_9 = 0; local_9 < 8; ++local_9)
                         hideVisual[local_9] = plr.hideVisual[local_9];
                     binary.Write(hideVisual);
 
-                    BitsByte hideVisual2 = (byte)0;
+                   BitsByte hideVisual2 = (byte)0;
                     for (int local_10 = 0; local_10 < 2; ++local_10)
                         hideVisual2[local_10] = plr.hideVisual[local_10 + 8];
                     binary.Write(hideVisual2);
@@ -199,8 +211,8 @@ namespace TProxy.Packets
                     binary.Write(plr.pantsColor.G);
                     binary.Write(plr.pantsColor.B);
 
-                    BitsByte extras = 0;
-                    binary.Write(extras);
+                    binary.Write(plr.extra);
+
 
                     int positionHolder = (int)binary.BaseStream.Position;
                     binary.BaseStream.Position = pointer;
@@ -246,7 +258,7 @@ namespace TProxy.Packets
         }
 
 
-        public static bool Deserialize(PacketTypes type, byte[] data, Client who)
+        public static bool DeserializeFromPlayer(PacketTypes type, byte[] data, Client who)
         {
             BinaryReader reader = new BinaryReader(new MemoryStream(data, 0, data.Length));
 
@@ -276,11 +288,11 @@ namespace TProxy.Packets
                                 {
                                     if (who.connection.port == server.port)
                                     {
-                                        who.SendMessage("[c/20b262:TProxy] [c/595959:»]  Znajdujesz sie juz na tym serwerze.", 128, 128, 128);
+                                        who.SendMessage("[c/20b262:TProxy] [c/595959:]  Znajdujesz sie juz na tym serwerze.", 128, 128, 128);
                                     }
                                     else
                                     {
-                                        who.SendMessage($"[c/20b262:TProxy] [c/595959:»]  Przenosze do [c/66ff66:{server.name}].");
+                                        who.SendMessage($"[c/20b262:TProxy] [c/595959:»]  Przenosze do [c/66ff66:{server.name}].", 128, 128, 128);
                                         who.ConnectTo(server.port);
                                     }
 
@@ -294,26 +306,38 @@ namespace TProxy.Packets
                     }
                 case PacketTypes.PlayerInfo:
                     {
-                        who.player.playerid = reader.ReadByte();
-                        who.player.skinVariant = reader.ReadByte();
-                        who.player.hair = reader.ReadByte();
-                        who.player.name = reader.ReadString();
-                        who.player.hairDye = reader.ReadByte();
+                        if (who.inTransfer)
+                            return true;
 
-                        who.player.hideVisual = reader.ReadByte();
-                        who.player.hideVisual2 = reader.ReadByte();
-                        who.player.hideMisc = reader.ReadByte();
+                        if (who.player.empty)
+                        {
+                            who.player.playerid = reader.ReadByte();
+                            who.player.skinVariant = reader.ReadByte();
+                            who.player.hair = reader.ReadByte();
+                            who.player.name = reader.ReadString();
+                            who.player.hairDye = reader.ReadByte();
 
-                        who.player.hairColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
-                        who.player.skinColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
-                        who.player.eyeColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
-                        who.player.shirtColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
-                        who.player.underShirtColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
-                        who.player.pantsColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
-                        who.player.shoeColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
+                            who.player.hideVisual = reader.ReadByte();
+                            who.player.hideVisual2 = reader.ReadByte();
+                            who.player.hideMisc = reader.ReadByte();
 
-                        who.player.extra = reader.ReadByte();
-                        return false;
+                            who.player.hairColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
+                            who.player.skinColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
+                            who.player.eyeColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
+                            who.player.shirtColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
+                            who.player.underShirtColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
+                            who.player.pantsColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
+                            who.player.shoeColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
+
+                            who.player.extra = reader.ReadByte();
+                            who.player.empty = false;
+                        }
+
+                        MemoryStream sdata = SerializeApperance(who.player);
+                        who.connection.tcp.Send(sdata.ToArray(), sdata.ToArray().Length, System.Net.Sockets.SocketFlags.None);
+
+
+                        return true;
                     }
                 case PacketTypes.PlayerSlot:
                     {
@@ -338,7 +362,7 @@ namespace TProxy.Packets
 
 
 
-        public static byte TransferDeserialize(PacketTypes type, byte[] data, Client who)
+        public static byte DeserializeFromTransfer(PacketTypes type, byte[] data, Client who)
         {
             BinaryReader reader = new BinaryReader(new MemoryStream(data, 0, data.Length));
 
@@ -354,6 +378,7 @@ namespace TProxy.Packets
                         who.connection.worldSpawnX = reader.ReadInt16();
                         who.connection.worldSpawnY = reader.ReadInt16();
 
+
                         MemoryStream getSectionr = Serialize(PacketTypes.TileGetSection, null, -1, -1);
                         who.connection.tcp.Send(getSectionr.ToArray(), getSectionr.ToArray().Length, System.Net.Sockets.SocketFlags.None);
 
@@ -363,8 +388,10 @@ namespace TProxy.Packets
                     {
                         who.state = PlayerState.onWorld;
 
-                        MemoryStream spawnSelf = Serialize(PacketTypes.PlayerSpawn, number: who.player.playerid, number2: who.connection.worldSpawnX, number3: who.connection.worldSpawnY);
+
+                        MemoryStream spawnSelf = Serialize(PacketTypes.PlayerSpawn, null, who.player.playerid, number2: who.connection.worldSpawnX, number3: who.connection.worldSpawnY, 0 , 1);
                         who.connection.tcp.Send(spawnSelf.ToArray(), spawnSelf.ToArray().Length, System.Net.Sockets.SocketFlags.None);
+
 
                         who.SendData(PacketTypes.Teleport, null, 0, who.player.playerid, who.connection.worldSpawnX * 16, who.connection.worldSpawnY * 16 - 3 * 16, 1);
 
@@ -375,12 +402,13 @@ namespace TProxy.Packets
                     {
                         who.player.playerid = reader.ReadByte();
 
+                        MemoryStream sdata = SerializeApperance(who.player);
+                        who.connection.tcp.Send(sdata.ToArray(), sdata.ToArray().Length, System.Net.Sockets.SocketFlags.None);
 
+                        sdata = Serialize(PacketTypes.ContinueConnecting2);
+                        who.connection.tcp.Send(sdata.ToArray(), sdata.ToArray().Length, System.Net.Sockets.SocketFlags.None);
 
-                        MemoryStream apperannce = SerializeApperance(who.player);
-                        who.connection.tcp.Send(apperannce.ToArray(), apperannce.ToArray().Length, System.Net.Sockets.SocketFlags.None);
-
-                        return 0;
+                        return 1;
                     }
                 default:
                     {
@@ -388,10 +416,11 @@ namespace TProxy.Packets
                         return 0;
                     }
 
+
             }
 
         }
-        public static bool FromServerDeserialize(PacketTypes type, byte[] data, Client who)
+        public static bool DeserializeFromServer(PacketTypes type, byte[] data, Client who)
         {
             BinaryReader reader = new BinaryReader(new MemoryStream(data, 0, data.Length));
 
@@ -413,10 +442,23 @@ namespace TProxy.Packets
                     {
                         int percentage = reader.ReadInt32();
                         string text = NetworkText.Deserialize(reader).ToString();
+                        byte flags = reader.ReadByte();
+
+                        if (who.state == PlayerState.Connecting)
+                        {
+                            who.SendData(PacketTypes.Status, "Witamy na serwerze Powelder!\n\n> Ladowanie", percentage, 2);
+
+                            return true;
+                        }
+                        else if (text == null)
+                            return true;
+                        else 
+                        {
+                            who.SendData(PacketTypes.Status, "[a:NO_HOBO]\n[g:23]\n[c/66ff6:Kolor]\n[i:1]" + text, percentage, 2);
+                        }
 
 
-
-                        return false;
+                        return true;
                     }
                 case PacketTypes.PlayerSpawnSelf:
                     {
@@ -426,7 +468,6 @@ namespace TProxy.Packets
                 case PacketTypes.ContinueConnecting:
                     {
                         who.player.playerid = reader.ReadByte();
-
 
 
                         return false;

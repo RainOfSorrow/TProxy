@@ -18,7 +18,7 @@ namespace TProxy
         public static void ClearItems(Client who)
         {
             for (int i = 0; i < 401; i++)
-                who.SendData(PacketTypes.ItemDrop, number: i);
+                who.SendData(PacketTypes.UpdateItemDrop, number: i);
         }
 
         public static void ClearPlayers(Client who)
