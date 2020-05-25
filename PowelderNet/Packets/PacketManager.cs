@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.Runtime.Remoting.Channels;
 using System.Text;
 using System.Threading;
 
@@ -99,21 +100,36 @@ namespace TProxy.Packets
                                 binary.Write((float)0);
                                 binary.Write((float)0);
                                 binary.Write((float)0);
+                                binary.Write((ushort)0);
+                                binary.Write((byte)0);
+                                binary.Write((byte)0);
                                 binary.Write((short)0);
+                                binary.Write((sbyte)0);
+                                break;
+                            }
+                        case PacketTypes.NpcStrike:
+                            {
+                                binary.Write((short)number);
+                                binary.Write((short)-1);
+                                binary.Write((float)0);
                                 binary.Write((byte)0);
                                 binary.Write((byte)0);
-                                for (int i = 0; i < 3; i++)
-                                    binary.Write((float)0);
-                                binary.Write((short)0);
-                                binary.Write((byte)4);
-                                binary.Write((int)0);
-                                binary.Write((byte)0);
+                                break;
+                            }
+                        case PacketTypes.NotifyPlayerNpcKilled:
+                            {
+                                binary.Write((short)number);
                                 break;
                             }
                         case PacketTypes.PlayerActive:
                             {
                                 binary.Write((byte)number);
                                 binary.Write((byte)0);
+                                break;
+                            }
+                        case PacketTypes.ClientUUID:
+                            {
+                                binary.Write(text.ToString());
                                 break;
                             }
                         case PacketTypes.UpdateItemDrop:
@@ -139,6 +155,12 @@ namespace TProxy.Packets
                             {
                                 binary.Write((ushort)number);
                                 binary.Write((byte)0);
+                                break;
+                            }
+                        case PacketTypes.ItemOwner:
+                            {
+                                binary.Write((short)number);
+                                binary.Write((byte)number2);
                                 break;
                             }
                         default:
@@ -207,9 +229,9 @@ namespace TProxy.Packets
                     binary.Write(plr.pantsColor.G);
                     binary.Write(plr.pantsColor.B);
 
-                    binary.Write(plr.pantsColor.R);
-                    binary.Write(plr.pantsColor.G);
-                    binary.Write(plr.pantsColor.B);
+                    binary.Write(plr.shoeColor.R);
+                    binary.Write(plr.shoeColor.G);
+                    binary.Write(plr.shoeColor.B);
 
                     binary.Write(plr.extra);
 
@@ -282,6 +304,7 @@ namespace TProxy.Packets
                         {
                             string command = Message.Remove(0, 1).ToLower();
 
+
                             foreach (Server server in TProxy.config.Servers)
                             {
                                 if (command.StartsWith(server.name.ToLower()) && !who.inTransfer)
@@ -306,15 +329,21 @@ namespace TProxy.Packets
                     }
                 case PacketTypes.PlayerInfo:
                     {
+
                         if (who.inTransfer)
+                        {
                             return true;
+                        }
+
 
                         if (who.player.empty)
                         {
                             who.player.playerid = reader.ReadByte();
                             who.player.skinVariant = reader.ReadByte();
                             who.player.hair = reader.ReadByte();
+
                             who.player.name = reader.ReadString();
+
                             who.player.hairDye = reader.ReadByte();
 
                             who.player.hideVisual = reader.ReadByte();
@@ -333,13 +362,16 @@ namespace TProxy.Packets
                             who.player.empty = false;
                         }
 
-                        MemoryStream sdata = SerializeApperance(who.player);
-                        who.connection.tcp.Send(sdata.ToArray(), sdata.ToArray().Length, System.Net.Sockets.SocketFlags.None);
-
-
-                        return true;
+                        return false;
                     }
                 case PacketTypes.PlayerSlot:
+                    {
+                        if (who.inTransfer)
+                            return true;
+
+                        return false;
+                    }
+                case PacketTypes.ContinueConnecting2:
                     {
                         if (who.inTransfer)
                             return true;
@@ -350,6 +382,12 @@ namespace TProxy.Packets
                     {
                         if (who.inTransfer)
                             return true;
+
+                        return false;
+                    }
+                case PacketTypes.ClientUUID:
+                    {
+                        who.player.UUID = reader.ReadString();
 
                         return false;
                     }
@@ -378,10 +416,14 @@ namespace TProxy.Packets
                         who.connection.worldSpawnX = reader.ReadInt16();
                         who.connection.worldSpawnY = reader.ReadInt16();
 
+                        MemoryStream apperance = SerializeApperance(who.player);
+                        who.connection.tcp.Send(apperance.ToArray(), apperance.ToArray().Length, System.Net.Sockets.SocketFlags.None);
 
-                        MemoryStream getSectionr = Serialize(PacketTypes.TileGetSection, null, -1, -1);
-                        who.connection.tcp.Send(getSectionr.ToArray(), getSectionr.ToArray().Length, System.Net.Sockets.SocketFlags.None);
+                        who.connection.SendData(PacketTypes.TileGetSection, null, -1, -1);
 
+                        who.connection.SendData(PacketTypes.ClientUUID, who.player.UUID);
+
+                        who.connection.SendData(PacketTypes.ItemOwner, null, 400, 255);
                         return 0;
                     }
                 case PacketTypes.PlayerSpawnSelf:
@@ -395,19 +437,29 @@ namespace TProxy.Packets
 
                         who.SendData(PacketTypes.Teleport, null, 0, who.player.playerid, who.connection.worldSpawnX * 16, who.connection.worldSpawnY * 16 - 3 * 16, 1);
 
-
                         return 2;
                     }
                 case PacketTypes.ContinueConnecting:
                     {
+                        Utils.ClearPlayers(who);
+                        Utils.ClearNPCs(who);
+                        Utils.ClearItems(who);
+
                         who.player.playerid = reader.ReadByte();
 
-                        MemoryStream sdata = SerializeApperance(who.player);
-                        who.connection.tcp.Send(sdata.ToArray(), sdata.ToArray().Length, System.Net.Sockets.SocketFlags.None);
+                        MemoryStream apperance = SerializeApperance(who.player);
+                        who.connection.tcp.Send(apperance.ToArray(), apperance.ToArray().Length, System.Net.Sockets.SocketFlags.None);
 
-                        sdata = Serialize(PacketTypes.ContinueConnecting2);
-                        who.connection.tcp.Send(sdata.ToArray(), sdata.ToArray().Length, System.Net.Sockets.SocketFlags.None);
+                        who.connection.SendData(PacketTypes.ContinueConnecting2);
 
+                        return 0;
+                    }
+                case PacketTypes.Disconnect:
+                    {
+                        string text = NetworkText.Deserialize(reader).ToString();
+                        who.SendMessage($"[c/20b262:{who.connection.port}] - [c/989898:Wyrzucono] [c/595959:»]\n{text}", 128, 128, 128);
+                        who.state = PlayerState.inVoid;
+                        who.connection.tcp.Close();
                         return 1;
                     }
                 default:

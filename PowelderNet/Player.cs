@@ -9,6 +9,8 @@ namespace TProxy
     {
         public byte playerid = 255;
 
+        public string UUID;
+
         //Apperance
         public int skinVariant;
         public byte hair;
