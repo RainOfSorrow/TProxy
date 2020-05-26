@@ -42,8 +42,11 @@ namespace TProxy
 
         public int slot;
 
-        public Client(Socket tcp, int port)
+        public byte index;
+
+        public Client(Socket tcp, int port, byte index)
         {
+            this.index = index;
             client = tcp;
             client.NoDelay = true;
             IP = ((IPEndPoint)client.RemoteEndPoint).Address.ToString();
@@ -55,12 +58,22 @@ namespace TProxy
 
             player = new Player();
 
-            Thread listen = new Thread(Listener)
+
+            try
             {
-                IsBackground = true
-            };
-            listen.Start(port);
-            Console.WriteLine($"Connection from ({IP}). [{TProxy.config.Servers[0].port}]");
+                Thread listen = new Thread(Listener)
+                {
+                    IsBackground = true
+                };
+                listen.Start(port);
+                Console.WriteLine($"Connection from ({IP}). [{TProxy.config.Servers[0].port}]");
+            }
+            catch (Exception e)
+            {
+                isConnected = false;
+                TProxy.avalibleClient[index] = true;
+                Console.WriteLine("Client Create: " + e.Message + '\n' + e.StackTrace);
+            }
 
 
             connection = new Connection();
@@ -73,6 +86,7 @@ namespace TProxy
                 connection.tcp.Connect("127.0.0.1", TProxy.config.Servers[0].port);
                 connection.tcp.NoDelay = true;
                 connection.name = TProxy.config.Servers[0].name;
+                connection.port = TProxy.config.Servers[0].port;
 
                 Thread fromserver = new Thread(new ParameterizedThreadStart(FromServer))
                 {
@@ -80,18 +94,14 @@ namespace TProxy
                 };
                 fromserver.Start(port);
             }
-            catch (IOException)
+            catch (Exception e)
             {
 
-            }
-            catch (SocketException)
-            {
-                Disconnect("TProxy » Lobby jest wylaczone.", "Lobby Offline");
+                isConnected = false;
+                TProxy.avalibleClient[index] = true;
+                Console.WriteLine("Client Server Create: " + e.Message + '\n' + e.StackTrace);
             }
 
-            connection.port = TProxy.config.Servers[0].port;
-
-            isConnected = false;
         }
 
         private void Listener(object port)
@@ -117,6 +127,13 @@ namespace TProxy
 
                     if (!PacketManager.DeserializeFromPlayer(packetType, buffer.Take(dataLength).ToArray(), this) && !inTransfer)
                     {
+
+                        while (connection == null || connection.tcp == null)
+                        {
+                             connection.SendData(PacketTypes.ConnectRequest);
+                            Thread.Sleep(15);
+                        }
+                        Try_01:
                         try
                         {
                             if (connection.tcp.Connected)
@@ -125,23 +142,37 @@ namespace TProxy
                                 connection.tcp.Send(packetTypeBuffer, packetTypeBuffer.Length, SocketFlags.None);
                                 connection.tcp.Send(buffer, dataLength, SocketFlags.None);
                             }
+                        } catch (SocketException)
+                        {
+                            goto Try_01;
                         }
-                        catch (Exception) { }
+
 
                     }
 
                 }
             }
-            catch (SocketException)
+            catch (Exception e)
             {
-
+                Console.WriteLine("Client Listen: " + e.Message + '\n' + e.StackTrace);
             }
 
 
             Console.WriteLine($"({IP}) disconnected. [Exit]");
+
             isConnected = false;
-            if (connection.tcp != null)
-                connection.tcp.Close();
+            TProxy.avalibleClient[index] = true;
+            try
+            {
+                if (connection.tcp != null)
+                {
+                    connection.tcp.Close();
+                }
+
+                if (client != null)
+                    client.Close();
+            }
+            catch (Exception) { }
         }
 
 
@@ -178,29 +209,46 @@ namespace TProxy
                     //    connection.buffer[9] = 9;
                     //}
 
-                    if (!PacketManager.DeserializeFromServer(packetType, connection.buffer.Take(dataLength).ToArray(), this)) {
+                    if (!PacketManager.DeserializeFromServer(packetType, connection.buffer.Take(dataLength).ToArray(), this))
+                    {
                         client.Send(lengthBuffer, lengthBuffer.Length, SocketFlags.None);
                         client.Send(packetTypeBuffer, packetTypeBuffer.Length, SocketFlags.None);
                         client.Send(connection.buffer, dataLength, SocketFlags.None);
                     }
                 }
             }
-            catch (SocketException)
+            catch (SocketException e)
             {
-                
+                if (e.ErrorCode != 10053)
+                {
+                    Console.WriteLine("Server Listen: " + e.Message + '\n' + e.StackTrace + "\n\n" + e.ErrorCode);
+                }
             }
-            catch (Exception)
+            catch (ObjectDisposedException) { }
+
+
+            try
             {
 
-            }
+                onConnect = false;
 
-            onConnect = false;
-            SendMessage($"[c/595959:<] [c/52e092:TProxy] [c/595959:>]  Odlaczono od [c/66ff66:{connection.name}].", 255,255,255);
+                if (connection.tcp.Connected)
+                    connection.tcp.Close();
+
+                if (client.Connected)
+                    SendMessage($"[c/595959:<] [c/52e092:TProxy] [c/595959:>]  Odlaczono od [c/66ff66:{connection.name}].", 255, 255, 255);
+            }
+            catch (Exception) { }
         }
 
         private void Transfer(object port)
         {
             inTransfer = true;
+
+            if (connection.tcp != null)
+            {
+                connection.tcp.Close();
+            }
 
             Console.WriteLine($"({IP}) -> [{(int)port}]");
             try
@@ -219,6 +267,7 @@ namespace TProxy
 
 
             connection.SendData(PacketTypes.ConnectRequest);
+            connection.SendProxyData(ProxyMessage.UpdateIP, IP);
 
             int isConnectedFully = 0;
 
@@ -264,8 +313,12 @@ namespace TProxy
             { 
             
             }
-        
-    
+            catch (Exception e)
+            {
+                Console.WriteLine("Server Transfer: " + e.Message + '\n' + e.StackTrace);
+            }
+
+
 
             Thread fromserver = new Thread(new ParameterizedThreadStart(FromServer))
             {
@@ -289,7 +342,9 @@ namespace TProxy
         public void ConnectTo(int port)
         {
             if (connection.tcp != null)
+            {
                 connection.tcp.Close();
+            }
 
             SendData(PacketTypes.Teleport, null, 0, player.playerid, 64 * 16, 64 * 16, 3);
 
@@ -306,7 +361,7 @@ namespace TProxy
 
         public void SendMessage(string Message, int R = 255, int G = 255, int B = 255)
         {
-            SendData(PacketTypes.SmartTextMessage, Message, 255, R, G, B, -1);
+                SendData(PacketTypes.SmartTextMessage, Message, 255, R, G, B, -1);
         }
 
         public void SendData(PacketTypes msgType, string text = null, int number = 0, float number2 = 0.0f, float number3 = 0.0f, float number4 = 0.0f, int number5 = 0, int number6 = 0, int number7 = 0)
@@ -338,8 +393,22 @@ namespace TProxy
 
         public void SendData(PacketTypes msgType, string text = null, int number = 0, float number2 = 0.0f, float number3 = 0.0f, float number4 = 0.0f, int number5 = 0, int number6 = 0, int number7 = 0)
         {
-            MemoryStream message = PacketManager.Serialize(msgType, NetworkText.FromLiteral(text), number, number2, number3, number4, number5, number6, number7);
-            tcp.Send(message.ToArray(), message.ToArray().Length, SocketFlags.None);
+            try
+            {
+                MemoryStream message = PacketManager.Serialize(msgType, NetworkText.FromLiteral(text), number, number2, number3, number4, number5, number6, number7);
+                tcp.Send(message.ToArray(), message.ToArray().Length, SocketFlags.None);
+            }
+            catch (Exception) { }
+        }
+
+        public void SendProxyData(ProxyMessage type, string text = null, int number = 0, float number2 = 0.0f, float number3 = 0.0f, int number4 = 0)
+        {
+            try
+            {
+                MemoryStream message = PacketManager.SerializeProxyMessage(type, NetworkText.FromLiteral(text), number, number2, number3, number4);
+                tcp.Send(message.ToArray(), message.ToArray().Length, SocketFlags.None);
+            }
+            catch (Exception) { }
         }
     }
 

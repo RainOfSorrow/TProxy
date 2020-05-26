@@ -5,6 +5,8 @@ VisualStudioVersion = 16.0.28729.10
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TProxy", "TProxy\TProxy.csproj", "{5B57603D-A01E-44D8-ACC1-E15D906E586C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TProxy-Plugin", "..\Plugin\TProxy-Plugin\TProxy-Plugin.csproj", "{740DE959-BE76-4E1D-9DA4-FDB3277C9B49}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{5B57603D-A01E-44D8-ACC1-E15D906E586C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5B57603D-A01E-44D8-ACC1-E15D906E586C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5B57603D-A01E-44D8-ACC1-E15D906E586C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{740DE959-BE76-4E1D-9DA4-FDB3277C9B49}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{740DE959-BE76-4E1D-9DA4-FDB3277C9B49}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{740DE959-BE76-4E1D-9DA4-FDB3277C9B49}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{740DE959-BE76-4E1D-9DA4-FDB3277C9B49}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

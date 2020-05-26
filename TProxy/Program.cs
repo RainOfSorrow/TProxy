@@ -10,6 +10,7 @@ namespace TProxy
     {
         public static TcpListener server;
         static Client[] clients = new Client[256];
+        public static bool[] avalibleClient = new bool[256];
         public static Config config;
 
         public static bool isRunning = true;
@@ -20,6 +21,11 @@ namespace TProxy
             if (!File.Exists("config.json"))
             {
                 config.Write("config.json");
+            }
+
+            for(int i = 0; i < 256; i++)
+            {
+                avalibleClient[i] = true;
             }
 
             server = new TcpListener(IPAddress.Any, config.MainPort);
@@ -49,18 +55,18 @@ namespace TProxy
                 Thread.Sleep(200);
                 Socket tcpclient = server.AcceptSocket();
 
-                int indxr = 0;
+                byte indxr = 0;
                 for (int indx = 0; indx < 256; indx++)
                 {
-                    if (clients[indx] == null || !clients[indx].isConnected)
+                    if (avalibleClient[indx])
                     {
-                        Console.WriteLine("Index: " + indx);
-                        indxr = indx;
+                        indxr = (byte)indx;
+                        avalibleClient[indx] = false;
                         break;
                     }
                 }
 
-                clients[indxr] = new Client(tcpclient, 7778);
+                clients[indxr] = new Client(tcpclient, 7778, indxr);
             }
         }
     }

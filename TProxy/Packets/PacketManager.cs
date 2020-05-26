@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
-using System.Runtime.Remoting.Channels;
 using System.Text;
 using System.Threading;
 
@@ -261,7 +260,6 @@ namespace TProxy.Packets
                     {
                         case ProxyMessage.UpdateIP:
                             {
-                                binary.Write(number);
                                 text.Serialize(binary);
                                 break;
                             }
@@ -283,7 +281,6 @@ namespace TProxy.Packets
         public static bool DeserializeFromPlayer(PacketTypes type, byte[] data, Client who)
         {
             BinaryReader reader = new BinaryReader(new MemoryStream(data, 0, data.Length));
-
 
             switch (type)
             {
@@ -367,6 +364,7 @@ namespace TProxy.Packets
                             who.player.empty = false;
                         }
 
+
                         return false;
                     }
                 case PacketTypes.PlayerSlot:
@@ -396,6 +394,17 @@ namespace TProxy.Packets
 
                         return false;
                     }
+                case PacketTypes.ConnectRequest:
+                    {
+                        Try_02:
+                        try
+                        {
+                            who.connection.SendData(PacketTypes.ConnectRequest);
+                            who.connection.SendProxyData(ProxyMessage.UpdateIP, who.IP);
+                        }
+                        catch (NullReferenceException) { goto Try_02; }
+                        return true;
+                    }
                 default:
                     {
                         return false;
@@ -421,7 +430,7 @@ namespace TProxy.Packets
                         who.connection.worldSpawnX = reader.ReadInt16();
                         who.connection.worldSpawnY = reader.ReadInt16();
 
-
+                       
                         who.connection.SendData(PacketTypes.TileGetSection, null, -1, -1);
 
                         who.connection.SendData(PacketTypes.ClientUUID, who.player.UUID);
@@ -502,7 +511,7 @@ namespace TProxy.Packets
 
                         if (who.state == PlayerState.Connecting)
                         {
-                            who.SendData(PacketTypes.Status, "Witamy na serwerze Powelder!\n\n> Ladowanie", percentage, 2);
+                            who.SendData(PacketTypes.Status, "Witamy na serwerze!               \n\n> Ladowanie", percentage, 2);
 
                             return true;
                         }
