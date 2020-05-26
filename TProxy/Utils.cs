@@ -32,6 +32,16 @@ namespace TProxy
             }
         }
 
+        public static void WriteMessage(string msg, ConsoleColor color = ConsoleColor.Gray)
+        {
+            Console.ForegroundColor = color;
+
+            Console.WriteLine(msg);
+
+            Console.ForegroundColor = ConsoleColor.Gray;
+
+        }
+
     }
 
 }

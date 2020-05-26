@@ -153,6 +153,7 @@ namespace TProxy.Packets
     public enum ProxyMessage
     {
         UpdateIP = 0,
-        ServerTP = 1
+        ServerTP = 1,
+        PlayerDead = 2,
     }
 }

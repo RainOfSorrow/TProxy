@@ -307,15 +307,20 @@ namespace TProxy.Packets
 
                             foreach (Server server in TProxy.config.Servers)
                             {
-                                if (command.StartsWith(server.name.ToLower()) && !who.inTransfer)
+                                if (!who.inTransfer && command.StartsWith(server.name.ToLower()) && command.EndsWith(server.name.ToLower()))
                                 {
+                                    
                                     if (who.connection.port == server.port)
                                     {
-                                        who.SendMessage("[c/20b262:TProxy] [c/595959:]  Znajdujesz sie juz na tym serwerze.", 128, 128, 128);
+                                        who.SendMessage("[c/595959:<] [c/52e092:TProxy] [c/595959:>]  Znajdujesz sie juz na tym serwerze.", 255, 0, 0);
+                                    }
+                                    else if ((DateTime.Now - who.LastChange).TotalMilliseconds < 5000)
+                                    {
+                                        who.SendMessage($"[c/595959:<] [c/52e092:TProxy] [c/595959:>]  Ochlon z przelaczaniem, sprobuj za {Math.Round((5000 - (DateTime.Now - who.LastChange).TotalMilliseconds) / 1000, 1)}s.", 255, 0, 0);
                                     }
                                     else
                                     {
-                                        who.SendMessage($"[c/20b262:TProxy] [c/595959:»]  Przenosze do [c/66ff66:{server.name}].", 128, 128, 128);
+                                        who.SendMessage($"[c/595959:<] [c/52e092:TProxy] [c/595959:>]  Przenosze do [c/66ff66:{server.name}].", 255, 255, 255);
                                         who.ConnectTo(server.port);
                                     }
 
@@ -416,8 +421,6 @@ namespace TProxy.Packets
                         who.connection.worldSpawnX = reader.ReadInt16();
                         who.connection.worldSpawnY = reader.ReadInt16();
 
-                        MemoryStream apperance = SerializeApperance(who.player);
-                        who.connection.tcp.Send(apperance.ToArray(), apperance.ToArray().Length, System.Net.Sockets.SocketFlags.None);
 
                         who.connection.SendData(PacketTypes.TileGetSection, null, -1, -1);
 
@@ -434,6 +437,7 @@ namespace TProxy.Packets
                         MemoryStream spawnSelf = Serialize(PacketTypes.PlayerSpawn, null, who.player.playerid, number2: who.connection.worldSpawnX, number3: who.connection.worldSpawnY, 0 , 1);
                         who.connection.tcp.Send(spawnSelf.ToArray(), spawnSelf.ToArray().Length, System.Net.Sockets.SocketFlags.None);
 
+                        who.LastChange = DateTime.Now;
 
                         who.SendData(PacketTypes.Teleport, null, 0, who.player.playerid, who.connection.worldSpawnX * 16, who.connection.worldSpawnY * 16 - 3 * 16, 1);
 
@@ -457,7 +461,7 @@ namespace TProxy.Packets
                 case PacketTypes.Disconnect:
                     {
                         string text = NetworkText.Deserialize(reader).ToString();
-                        who.SendMessage($"[c/20b262:{who.connection.port}] - [c/989898:Wyrzucono] [c/595959:»]\n{text}", 128, 128, 128);
+                        who.SendMessage($"[c/52e092:{who.connection.name}] - Wyrzucono: \n{text}", 255, 255, 255);
                         who.state = PlayerState.inVoid;
                         who.connection.tcp.Close();
                         return 1;
@@ -483,7 +487,7 @@ namespace TProxy.Packets
                         if (who.state == PlayerState.onWorld)
                         {
                             string text = NetworkText.Deserialize(reader).ToString();
-                            who.SendMessage($"[c/20b262:{who.connection.port}] - [c/989898:Wyrzucono] [c/595959:»]\n{text}", 128, 128, 128);
+                            who.SendMessage($"[c/52e092:{who.connection.port}] - [c/989898:Wyrzucono] [c/595959:»]\n{text}", 128, 128, 128);
                             who.state = PlayerState.inVoid;
                             who.connection.tcp.Close();
                             return true;
@@ -506,7 +510,7 @@ namespace TProxy.Packets
                             return true;
                         else 
                         {
-                            who.SendData(PacketTypes.Status, "[a:NO_HOBO]\n[g:23]\n[c/66ff6:Kolor]\n[i:1]" + text, percentage, 2);
+                            who.SendData(PacketTypes.Status, text, percentage, 2);
                         }
 
 
