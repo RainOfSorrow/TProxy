@@ -402,7 +402,7 @@ namespace TProxy.Packets
                             who.connection.SendData(PacketTypes.ConnectRequest);
                             who.connection.SendProxyData(ProxyMessage.UpdateIP, who.IP);
                         }
-                        catch (NullReferenceException) { goto Try_02; }
+                        catch (NullReferenceException) { Thread.Sleep(10); goto Try_02; }
                         return true;
                     }
                 default:

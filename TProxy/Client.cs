@@ -44,6 +44,10 @@ namespace TProxy
 
         public byte index;
 
+        Thread ListenPlayer;
+        Thread ListenServer;
+        Thread ListenTransfer;
+
         public Client(Socket tcp, int port, byte index)
         {
             this.index = index;
@@ -61,11 +65,11 @@ namespace TProxy
 
             try
             {
-                Thread listen = new Thread(Listener)
+                ListenPlayer = new Thread(Listener)
                 {
                     IsBackground = true
                 };
-                listen.Start(port);
+                ListenPlayer.Start(port);
                 Console.WriteLine($"Connection from ({IP}). [{TProxy.config.Servers[0].port}]");
             }
             catch (Exception e)
@@ -88,11 +92,11 @@ namespace TProxy
                 connection.name = TProxy.config.Servers[0].name;
                 connection.port = TProxy.config.Servers[0].port;
 
-                Thread fromserver = new Thread(new ParameterizedThreadStart(FromServer))
+                ListenServer = new Thread(new ParameterizedThreadStart(FromServer))
                 {
                     IsBackground = true
                 };
-                fromserver.Start(port);
+                ListenServer.Start(port);
             }
             catch (Exception e)
             {
@@ -119,6 +123,9 @@ namespace TProxy
                     var readed = 0;
                     while (dataLength - readed != 0)
                     {
+                        if (client.Available < 1)
+                            Thread.Sleep(10);
+
                         readed += client.Receive(buffer, readed, dataLength - readed, SocketFlags.None);
                     }
 
@@ -186,15 +193,17 @@ namespace TProxy
                 connection.buffer = new byte[131070];
                 var lengthBuffer = new byte[2];
                 var packetTypeBuffer = new byte[1];
-                while (onConnect)
+                while (connection.tcp.Receive(lengthBuffer, 2, SocketFlags.None) != 0)
                 {
-                    connection.tcp.Receive(lengthBuffer, 2, SocketFlags.None);
                     ushort dataLength = (ushort)(BitConverter.ToUInt16(lengthBuffer, 0) - 3);
                     connection.tcp.Receive(packetTypeBuffer, 1, SocketFlags.None);
                     PacketTypes packetType = (PacketTypes)packetTypeBuffer[0];
                     var readed = 0;
                     while (dataLength - readed != 0)
                     {
+                        if (connection.tcp.Available < 1)
+                            Thread.Sleep(10);
+
                         readed += connection.tcp.Receive(connection.buffer, readed, dataLength - readed, SocketFlags.None);
 
                     }
@@ -263,6 +272,11 @@ namespace TProxy
                 ConnectTo(TProxy.config.Servers[0].port);
                 return;
             }
+            catch (Exception e)
+            {
+                Console.WriteLine("Server Transfer Create Listen: " + e.Message + '\n' + e.StackTrace);
+                return;
+            }
             connection.name = TProxy.config.Servers.First(x => x.port == (int)port).name;
 
 
@@ -320,11 +334,11 @@ namespace TProxy
 
 
 
-            Thread fromserver = new Thread(new ParameterizedThreadStart(FromServer))
+            Thread ListenServer = new Thread(new ParameterizedThreadStart(FromServer))
             {
                 IsBackground = true
             };
-            fromserver.Start(port);
+            ListenServer.Start(port);
 
             inTransfer = false;
 
@@ -352,11 +366,11 @@ namespace TProxy
 
             SendData(PacketTypes.PlayerAddBuff, null, player.playerid, 149, 330);
 
-            Thread transfer = new Thread(new ParameterizedThreadStart(Transfer))
+            ListenTransfer = new Thread(new ParameterizedThreadStart(Transfer))
             {
                 IsBackground = true
             };
-            transfer.Start(port);
+            ListenTransfer.Start(port);
         }
 
         public void SendMessage(string Message, int R = 255, int G = 255, int B = 255)
