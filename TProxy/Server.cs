@@ -4,29 +4,29 @@ using System.Text;
 
 namespace TProxy
 {
-    class Server
+    internal class Server
     {
-        public string name;
-        public int port;
-        public byte slots;
+        public string Name;
+        public int Port;
+        public byte Slots;
 
         public Server(string name, int port, byte slots)
         {
-            this.port = port;
-            this.name = name;
-            this.slots = slots;
+            this.Port = port;
+            this.Name = name;
+            this.Slots = slots;
         }
     }
 
-    class Instance
+    internal class Instance
     {
-        public string name;
-        public Server[] servers;
+        public string Name;
+        public Server[] Servers;
 
         public Instance(string name, params Server[] servers)
         {
-            this.name = name;
-            this.servers = servers;
+            Name = name;
+            Servers = servers;
         }
     }
 }

@@ -7,7 +7,7 @@ using System.Text;
 
 namespace TProxy
 {
-    class Utils
+    internal static class Utils
     {
         public static void ClearNPCs(Client who)
         {
@@ -25,7 +25,7 @@ namespace TProxy
         {
             for (int i = 0; i < 256; i++)
             {
-                if (i == who.player.playerid)
+                if (i == who.Player.playerid)
                     continue;
 
                 who.SendData(PacketTypes.PlayerActive, number: i);
@@ -39,7 +39,11 @@ namespace TProxy
             Console.WriteLine(msg);
 
             Console.ForegroundColor = ConsoleColor.Gray;
+        }
 
+        public static void WriteException(string where, Exception e)
+        {
+            WriteMessage($"{where}: {e.Message}\n");
         }
 
     }

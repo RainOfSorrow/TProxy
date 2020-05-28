@@ -39,6 +39,5 @@ namespace TProxy
 
         //Proxy
         public bool empty = true;
-
     }
 }

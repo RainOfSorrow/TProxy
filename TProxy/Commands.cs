@@ -6,24 +6,24 @@ namespace TProxy
 {
     class CommandArgs : EventArgs
     {
-        public Client who;
+        public Client Who;
     }
 
     class Command
     {
-        public string name;
-        public string permission;
-        private Action<CommandArgs> action;
+        public string Name;
+        public string Permission;
+        private Action<CommandArgs> _action;
         
 
         public Command(string name, string permission, Action<CommandArgs> action)
         {
-            this.name = name;
-            this.permission = permission;
-            this.action = action;
+            this.Name = name;
+            this.Permission = permission;
+            this._action = action;
         }
 
-        public void Invoke(CommandArgs args) => action.Invoke(args);
+        public void Invoke(CommandArgs args) => _action.Invoke(args);
     }
     
     class Commands

@@ -7,7 +7,7 @@ using System.Threading;
 
 namespace TProxy.Packets
 {
-    class PacketManager
+    internal static class PacketManager
     {
         public static MemoryStream Serialize(PacketTypes msgType, NetworkText text = null, int number = 0, float number2 = 0.0f, float number3 = 0.0f, float number4 = 0.0f, int number5 = 0, int number6 = 0, int number7 = 0)
         {
@@ -302,12 +302,12 @@ namespace TProxy.Packets
                             string command = Message.Remove(0, 1).ToLower();
 
 
-                            foreach (Server server in TProxy.config.Servers)
+                            foreach (Server server in TProxy.Config.Servers)
                             {
-                                if (!who.inTransfer && command.StartsWith(server.name.ToLower()) && command.EndsWith(server.name.ToLower()))
+                                if (!who.InTransfer && command.StartsWith(server.Name.ToLower()) && command.EndsWith(server.Name.ToLower()))
                                 {
                                     
-                                    if (who.connection.port == server.port)
+                                    if (who.Connection.Port == server.Port)
                                     {
                                         who.SendMessage("[c/595959:<] [c/52e092:TProxy] [c/595959:>]  Znajdujesz sie juz na tym serwerze.", 255, 0, 0);
                                     }
@@ -317,8 +317,8 @@ namespace TProxy.Packets
                                     }
                                     else
                                     {
-                                        who.SendMessage($"[c/595959:<] [c/52e092:TProxy] [c/595959:>]  Przenosze do [c/66ff66:{server.name}].", 255, 255, 255);
-                                        who.ConnectTo(server.port);
+                                        who.SendMessage($"[c/595959:<] [c/52e092:TProxy] [c/595959:>]  Przenosze do [c/66ff66:{server.Name}].", 255, 255, 255);
+                                        who.ConnectTo(server.Port);
                                     }
 
                                     return true;
@@ -332,36 +332,36 @@ namespace TProxy.Packets
                 case PacketTypes.PlayerInfo:
                     {
 
-                        if (who.inTransfer)
+                        if (who.InTransfer)
                         {
                             return true;
                         }
 
 
-                        if (who.player.empty)
+                        if (who.Player.empty)
                         {
-                            who.player.playerid = reader.ReadByte();
-                            who.player.skinVariant = reader.ReadByte();
-                            who.player.hair = reader.ReadByte();
+                            who.Player.playerid = reader.ReadByte();
+                            who.Player.skinVariant = reader.ReadByte();
+                            who.Player.hair = reader.ReadByte();
 
-                            who.player.name = reader.ReadString();
+                            who.Player.name = reader.ReadString();
 
-                            who.player.hairDye = reader.ReadByte();
+                            who.Player.hairDye = reader.ReadByte();
 
-                            who.player.hideVisual = reader.ReadByte();
-                            who.player.hideVisual2 = reader.ReadByte();
-                            who.player.hideMisc = reader.ReadByte();
+                            who.Player.hideVisual = reader.ReadByte();
+                            who.Player.hideVisual2 = reader.ReadByte();
+                            who.Player.hideMisc = reader.ReadByte();
 
-                            who.player.hairColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
-                            who.player.skinColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
-                            who.player.eyeColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
-                            who.player.shirtColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
-                            who.player.underShirtColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
-                            who.player.pantsColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
-                            who.player.shoeColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
+                            who.Player.hairColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
+                            who.Player.skinColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
+                            who.Player.eyeColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
+                            who.Player.shirtColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
+                            who.Player.underShirtColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
+                            who.Player.pantsColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
+                            who.Player.shoeColor = new Color(reader.ReadByte(), reader.ReadByte(), reader.ReadByte());
 
-                            who.player.extra = reader.ReadByte();
-                            who.player.empty = false;
+                            who.Player.extra = reader.ReadByte();
+                            who.Player.empty = false;
                         }
 
 
@@ -369,28 +369,28 @@ namespace TProxy.Packets
                     }
                 case PacketTypes.PlayerSlot:
                     {
-                        if (who.inTransfer)
+                        if (who.InTransfer)
                             return true;
 
                         return false;
                     }
                 case PacketTypes.ContinueConnecting2:
                     {
-                        if (who.inTransfer)
+                        if (who.InTransfer)
                             return true;
 
                         return false;
                     }
                 case PacketTypes.ItemOwner:
                     {
-                        if (who.inTransfer)
+                        if (who.InTransfer)
                             return true;
 
                         return false;
                     }
                 case PacketTypes.ClientUUID:
                     {
-                        who.player.UUID = reader.ReadString();
+                        who.Player.UUID = reader.ReadString();
 
                         return false;
                     }
@@ -399,8 +399,8 @@ namespace TProxy.Packets
                         Try_02:
                         try
                         {
-                            who.connection.SendData(PacketTypes.ConnectRequest);
-                            who.connection.SendProxyData(ProxyMessage.UpdateIP, who.IP);
+                            who.Connection.SendData(PacketTypes.ConnectRequest);
+                            who.Connection.SendProxyData(ProxyMessage.UpdateIP, who.Ip);
                         }
                         catch (NullReferenceException) { Thread.Sleep(10); goto Try_02; }
                         return true;
@@ -427,28 +427,28 @@ namespace TProxy.Packets
                         reader.ReadByte();
                         reader.ReadInt16();
                         reader.ReadInt16();
-                        who.connection.worldSpawnX = reader.ReadInt16();
-                        who.connection.worldSpawnY = reader.ReadInt16();
+                        who.Connection.WorldSpawnX = reader.ReadInt16();
+                        who.Connection.WorldSpawnY = reader.ReadInt16();
 
                        
-                        who.connection.SendData(PacketTypes.TileGetSection, null, -1, -1);
+                        who.Connection.SendData(PacketTypes.TileGetSection, null, -1, -1);
 
-                        who.connection.SendData(PacketTypes.ClientUUID, who.player.UUID);
+                        who.Connection.SendData(PacketTypes.ClientUUID, who.Player.UUID);
 
-                        who.connection.SendData(PacketTypes.ItemOwner, null, 400, 255);
+                        who.Connection.SendData(PacketTypes.ItemOwner, null, 400, 255);
                         return 0;
                     }
                 case PacketTypes.PlayerSpawnSelf:
                     {
-                        who.state = PlayerState.onWorld;
+                        who.State = PlayerState.onWorld;
 
 
-                        MemoryStream spawnSelf = Serialize(PacketTypes.PlayerSpawn, null, who.player.playerid, number2: who.connection.worldSpawnX, number3: who.connection.worldSpawnY, 0 , 1);
-                        who.connection.tcp.Send(spawnSelf.ToArray(), spawnSelf.ToArray().Length, System.Net.Sockets.SocketFlags.None);
+                        MemoryStream spawnSelf = Serialize(PacketTypes.PlayerSpawn, null, who.Player.playerid, number2: who.Connection.WorldSpawnX, number3: who.Connection.WorldSpawnY, 0 , 1);
+                        who.Connection.Tcp.Send(spawnSelf.ToArray(), spawnSelf.ToArray().Length, System.Net.Sockets.SocketFlags.None);
 
                         who.LastChange = DateTime.Now;
 
-                        who.SendData(PacketTypes.Teleport, null, 0, who.player.playerid, who.connection.worldSpawnX * 16, who.connection.worldSpawnY * 16 - 3 * 16, 1);
+                        who.SendData(PacketTypes.Teleport, null, 0, who.Player.playerid, who.Connection.WorldSpawnX * 16, who.Connection.WorldSpawnY * 16 - 3 * 16, 1);
 
                         return 2;
                     }
@@ -458,21 +458,21 @@ namespace TProxy.Packets
                         Utils.ClearNPCs(who);
                         Utils.ClearItems(who);
 
-                        who.player.playerid = reader.ReadByte();
+                        who.Player.playerid = reader.ReadByte();
 
-                        MemoryStream apperance = SerializeApperance(who.player);
-                        who.connection.tcp.Send(apperance.ToArray(), apperance.ToArray().Length, System.Net.Sockets.SocketFlags.None);
+                        MemoryStream apperance = SerializeApperance(who.Player);
+                        who.Connection.Tcp.Send(apperance.ToArray(), apperance.ToArray().Length, System.Net.Sockets.SocketFlags.None);
 
-                        who.connection.SendData(PacketTypes.ContinueConnecting2);
+                        who.Connection.SendData(PacketTypes.ContinueConnecting2);
 
                         return 0;
                     }
                 case PacketTypes.Disconnect:
                     {
                         string text = NetworkText.Deserialize(reader).ToString();
-                        who.SendMessage($"[c/52e092:{who.connection.name}] - Wyrzucono: \n{text}", 255, 255, 255);
-                        who.state = PlayerState.inVoid;
-                        who.connection.tcp.Close();
+                        who.SendMessage($"[c/52e092:{who.Connection.Name}] - Wyrzucono: \n{text}", 255, 255, 255);
+                        who.State = PlayerState.inVoid;
+                        who.Connection.Tcp.Close();
                         return 1;
                     }
                 default:
@@ -493,12 +493,12 @@ namespace TProxy.Packets
             {
                 case PacketTypes.Disconnect:
                     {
-                        if (who.state == PlayerState.onWorld)
+                        if (who.State == PlayerState.onWorld)
                         {
                             string text = NetworkText.Deserialize(reader).ToString();
-                            who.SendMessage($"[c/52e092:{who.connection.port}] - [c/989898:Wyrzucono] [c/595959:»]\n{text}", 128, 128, 128);
-                            who.state = PlayerState.inVoid;
-                            who.connection.tcp.Close();
+                            who.SendMessage($"[c/52e092:{who.Connection.Port}] - [c/989898:Wyrzucono] [c/595959:»]\n{text}", 128, 128, 128);
+                            who.State = PlayerState.inVoid;
+                            who.Connection.Tcp.Close();
                             return true;
                         }
                         return false;
@@ -509,7 +509,7 @@ namespace TProxy.Packets
                         string text = NetworkText.Deserialize(reader).ToString();
                         byte flags = reader.ReadByte();
 
-                        if (who.state == PlayerState.Connecting)
+                        if (who.State == PlayerState.Connecting)
                         {
                             who.SendData(PacketTypes.Status, "Witamy na serwerze!               \n\n> Ladowanie", percentage, 2);
 
@@ -527,12 +527,12 @@ namespace TProxy.Packets
                     }
                 case PacketTypes.PlayerSpawnSelf:
                     {
-                        who.state = PlayerState.onWorld;
+                        who.State = PlayerState.onWorld;
                         return false;
                     }
                 case PacketTypes.ContinueConnecting:
                     {
-                        who.player.playerid = reader.ReadByte();
+                        who.Player.playerid = reader.ReadByte();
 
 
                         return false;

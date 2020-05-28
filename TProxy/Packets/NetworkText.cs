@@ -96,7 +96,7 @@ namespace TProxy.Packets
                         return this._text;
                     case NetworkText.Mode.Formattable:
                         return string.Format(this._text, (object[])this._substitutions);
-                    case NetworkText.Mode.LocalizationKey:
+                    case Mode.LocalizationKey:
                         return null;
                     default:
                         return this._text;

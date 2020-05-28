@@ -3,48 +3,49 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using static System.Threading.Thread;
 
 namespace TProxy
 {
     class TProxy
     {
-        public static TcpListener server;
+        public static TcpListener Server;
         static Client[] clients = new Client[256];
-        public static bool[] avalibleClient = new bool[256];
-        public static Config config;
+        public static bool[] AvalibleClient = new bool[256];
+        public static Config Config;
 
-        public static bool isRunning = true;
+        public static bool IsRunning = true;
 
         static void Main(string[] args)
         {
-            config = Config.Read("config.json");
+            Config = Config.Read("config.json");
             if (!File.Exists("config.json"))
             {
-                config.Write("config.json");
+                Config.Write("config.json");
             }
 
             for(int i = 0; i < 256; i++)
             {
-                avalibleClient[i] = true;
+                AvalibleClient[i] = true;
             }
 
-            server = new TcpListener(IPAddress.Any, config.MainPort);
+            Server = new TcpListener(IPAddress.Any, Config.MainPort);
 
-            server.Start();
+            Server.Start();
 
-            Thread clistener = new Thread(PlayersListener)
+            var listener = new Thread(PlayersListener)
             {
                 IsBackground = true
-            }; clistener.Start();
+            }; listener.Start();
 
             Console.ForegroundColor = ConsoleColor.DarkGreen;
-            Console.WriteLine($"[TProxy] Listening on port {config.MainPort}...");
+            Console.WriteLine($"[TProxy] Listening on port {Config.MainPort}...");
             Console.ResetColor();
 
 
-            while (isRunning)
+            while (IsRunning)
             {
-                Thread.Sleep(1000);
+                Sleep(1000);
             }
         }
 
@@ -52,16 +53,16 @@ namespace TProxy
         {
             while (true)
             {
-                Thread.Sleep(200);
-                Socket tcpclient = server.AcceptSocket();
+                Sleep(200);
+                var tcpclient = Server.AcceptSocket();
 
                 byte indxr = 0;
                 for (int indx = 0; indx < 256; indx++)
                 {
-                    if (avalibleClient[indx])
+                    if (AvalibleClient[indx])
                     {
                         indxr = (byte)indx;
-                        avalibleClient[indx] = false;
+                        AvalibleClient[indx] = false;
                         break;
                     }
                 }

@@ -6,7 +6,7 @@ using Newtonsoft.Json;
 
 namespace TProxy
 {
-    class Config
+    internal class Config
     {
         public int MainPort = 7777;
 
