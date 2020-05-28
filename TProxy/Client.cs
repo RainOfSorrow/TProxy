@@ -21,7 +21,7 @@ namespace TProxy
 
         public PlayerState State = 0;
 
-        public bool InTransfer = false;
+        public bool InTransfer;
 
         private readonly byte[] _buffer = new byte[131070];
 
@@ -65,6 +65,9 @@ namespace TProxy
                 IsConnected = false;
                 TProxy.AvalibleClient[index] = true;
                 Console.WriteLine("Client Create: " + e.Message + '\n' + e.StackTrace);
+                IsConnected = false;
+                TProxy.AvalibleClient[index] = true;
+                return;
             }
 
 
@@ -115,6 +118,9 @@ namespace TProxy
                         if (Tcp.Available < 1)
                             Thread.Sleep(10);
 
+                        if (!Tcp.Connected)
+                            throw new Exception("Disconnected");
+
                         readed += Tcp.Receive(_buffer, readed, dataLength - readed, SocketFlags.None);
                     }
 
@@ -123,7 +129,7 @@ namespace TProxy
 
                     if (PacketManager.DeserializeFromPlayer(packetType, _buffer.Take(dataLength).ToArray(), this) ||
                         InTransfer) continue;
-                    while (Connection == null || Connection.Tcp == null)
+                    while (Connection?.Tcp == null)
                     {
                         Connection?.SendData(PacketTypes.ConnectRequest);
                         Thread.Sleep(15);
@@ -179,16 +185,20 @@ namespace TProxy
                 var packetTypeBuffer = new byte[1];
                 while (Connection.Tcp.Receive(lengthBuffer, 2, SocketFlags.None) != 0)
                 {
-                    ushort dataLength = (ushort)(BitConverter.ToUInt16(lengthBuffer, 0) - 3);
+                    ushort dataLength = (ushort) (BitConverter.ToUInt16(lengthBuffer, 0) - 3);
                     Connection.Tcp.Receive(packetTypeBuffer, 1, SocketFlags.None);
-                    var packetType = (PacketTypes)packetTypeBuffer[0];
+                    var packetType = (PacketTypes) packetTypeBuffer[0];
                     var readed = 0;
                     while (dataLength - readed != 0)
                     {
                         if (Connection.Tcp.Available < 1)
                             Thread.Sleep(10);
 
-                        readed += Connection.Tcp.Receive(Connection.Buffer, readed, dataLength - readed, SocketFlags.None);
+                        if (!Connection.Tcp.Connected)
+                            throw new Exception("Disconnected"); 
+
+                        readed += Connection.Tcp.Receive(Connection.Buffer, readed, dataLength - readed,
+                            SocketFlags.None);
 
                     }
 
@@ -211,12 +221,18 @@ namespace TProxy
             }
             catch (SocketException e)
             {
-                if (e.ErrorCode != 10053 || e.ErrorCode != 43)
+                if (e.ErrorCode != 10053 || e.ErrorCode != 43 || e.ErrorCode != 104 || e.ErrorCode != 32)
                 {
                     Console.WriteLine("Server Listen: " + e.Message + '\n' + e.StackTrace + "\n\n" + e.ErrorCode);
                 }
             }
-            catch (ObjectDisposedException) { }
+            catch (ObjectDisposedException)
+            {
+            }
+            catch (Exception)
+            {
+                //Ignore
+            }
 
 
             try
@@ -228,7 +244,7 @@ namespace TProxy
                     Connection.Tcp.Close();
 
                 if (Tcp.Connected)
-                    SendMessage($"[c/595959:<] [c/52e092:TProxy] [c/595959:>]  Odlaczono od [c/66ff66:{Connection.Name}].", 255, 255, 255);
+                    SendMessage($"[c/595959:<] [c/52e092:TProxy] [c/595959:>]  Odlaczono od [c/66ff66:{Connection.Name}].");
             }
             catch (Exception)
             {
@@ -285,6 +301,12 @@ namespace TProxy
                     var readed = 0;
                     while (dataLength - readed != 0)
                     {
+                        if (Connection.Tcp.Available < 1)
+                            Thread.Sleep(10);
+
+                        if (!Connection.Tcp.Connected)
+                            throw new Exception("Disconnected");
+
                         readed += Connection.Tcp.Receive(Connection.Buffer, readed, dataLength - readed, SocketFlags.None);
                     }
 
@@ -315,6 +337,9 @@ namespace TProxy
             catch (Exception e)
             {
                 Console.WriteLine("Server Transfer: " + e.Message + '\n' + e.StackTrace);
+                SendMessage($"[c/595959:<] [c/52e092:TProxy] [c/595959:>]  Cos poszlo nie tak, zglos to dla administratora. Przenosze do [c/66ff66:{TProxy.Config.Servers[0].Name}].", 128, 128, 128);
+                ConnectTo(TProxy.Config.Servers[0].Port);
+                return;
             }
 
 
