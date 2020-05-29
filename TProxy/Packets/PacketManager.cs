@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.ComponentModel.Design;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 
@@ -9,6 +11,7 @@ namespace TProxy.Packets
 {
     internal static class PacketManager
     {
+
         public static MemoryStream Serialize(PacketTypes msgType, NetworkText text = null, int number = 0, float number2 = 0.0f, float number3 = 0.0f, float number4 = 0.0f, int number5 = 0, int number6 = 0, int number7 = 0)
         {
             using (MemoryStream mem = new MemoryStream())
@@ -511,16 +514,29 @@ namespace TProxy.Packets
 
                         if (who.State == PlayerState.Connecting)
                         {
-                            who.SendData(PacketTypes.Status, "Witamy na serwerze!               \n\n> Ladowanie", percentage, 2);
+                            who.SendData(PacketTypes.Status, "Witamy na serwerze Powelder!               \n\n» Wczytywanie", percentage, 2);
 
                             return true;
                         }
                         else if (text == null)
                             return true;
-                        else 
+                        else if (text.StartsWith(">|"))
                         {
-                            who.SendData(PacketTypes.Status, text, percentage, 2);
+                            string status = text.Remove(0,3);
+                            
+                            if (text[2] == 'f')
+                            {
+
+
+                                who.SendData(PacketTypes.Status, $"{RepeatLineBreaks(75)} {CreateCenteredStatus("« Powelder »   ", 20)} \n {status}", 2);
+                            }
+                            else if (text[2] == 't')
+                            {
+                                who.SendData(PacketTypes.Status, RepeatLineBreaks(75) + status, 2);
+                            }
+                                
                         }
+                        
 
 
                         return true;
@@ -542,6 +558,29 @@ namespace TProxy.Packets
         }
 
 
-       
+        private static string RepeatLineBreaks(int number)
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+            for (int i = 0; i < number; i++)
+            {
+                stringBuilder.Append("\r\n");
+            }
+            return stringBuilder.ToString();
+        }
+
+        private static string CreateCenteredStatus(string text, int width)
+        {
+            // ReSharper disable once HeapView.ObjectAllocation.Evident
+
+            int append = (width - text.Length) / 2;
+            
+            for (int i = 0; i < append; i++)
+            {
+                text.Prepend(' ');
+                text.Append(' ');
+            }
+            return text;
+
+        }
     }
 }

@@ -67,7 +67,7 @@ namespace TProxy
                     }
                 }
 
-                clients[indxr] = new Client(tcpclient, 7778, indxr);
+                clients[indxr] = new Client(tcpclient, indxr, 7778);
             }
         }
     }

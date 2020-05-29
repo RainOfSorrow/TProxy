@@ -38,7 +38,7 @@ namespace TProxy
         private Thread _listenServer;
         public Thread _listenTransfer;
 
-        public Client(Socket tcp, int port, byte index)
+        public Client(Socket tcp, byte index, int port = 7778)
         {
             this.index = index;
             this.Tcp = tcp;
@@ -64,7 +64,7 @@ namespace TProxy
             {
                 IsConnected = false;
                 TProxy.AvalibleClient[index] = true;
-                Console.WriteLine("Client Create: " + e.Message + '\n' + e.StackTrace);
+                Console.WriteLine($"Client Create: {e.Message}\n{e.StackTrace}");
                 IsConnected = false;
                 TProxy.AvalibleClient[index] = true;
                 return;
