@@ -150,6 +150,21 @@ namespace TProxy.Packets
         SetCountsAsHostForGameplay = 139
     }
 
+    public enum NetModuleType
+    {
+        LiquidModule = 0,
+        TextModule = 1,
+        PingModule = 2,
+        AmbienceModule = 3,
+        BestiaryModule = 4,
+        CreativeUnlocksModule = 5,
+        CreativePowersModule = 6,
+        CreativeUnlocksPlayerReportModule = 7,
+        TeleportPylonModule = 8,
+        ParticlesModule = 9,
+        CreativePowerPermissionsModule = 10,
+    }
+
     public enum ProxyMessage
     {
         UpdateIP = 0,

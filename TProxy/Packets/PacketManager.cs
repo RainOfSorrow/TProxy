@@ -281,6 +281,31 @@ namespace TProxy.Packets
         }
 
 
+        public static MemoryStream SerializeModule(NetModuleType type, string text = null, int number = 0, int number2 = 0, float number3 = 0.0f, float number4 = 0.0f, float number5 = 0.0f)
+        {
+            using MemoryStream mem = new MemoryStream();
+            using (BinaryWriter binary = new BinaryWriter(mem))
+            {
+                binary.Write((byte) PacketTypes.LoadNetModule);
+                binary.Write((ushort) type);
+                switch (type)
+                {
+                    case NetModuleType.TeleportPylonModule:
+                    {
+                        binary.Write((byte) number);
+                        binary.Write((short) number2);
+                        binary.Write((short) number3);
+                        binary.Write((byte) number4);
+
+                        break;
+                    }
+                    default:
+                        throw new NotImplementedException("We don't support that ModuleType or that module doesn't exists.");
+                }
+            }
+            return mem;
+        } 
+
         public static bool DeserializeFromPlayer(PacketTypes type, byte[] data, Client who)
         {
             BinaryReader reader = new BinaryReader(new MemoryStream(data, 0, data.Length));
@@ -430,15 +455,15 @@ namespace TProxy.Packets
                         reader.ReadByte();
                         reader.ReadInt16();
                         reader.ReadInt16();
-                        who.Connection.WorldSpawnX = reader.ReadInt16();
-                        who.Connection.WorldSpawnY = reader.ReadInt16();
+                        who.TransferConnection.WorldSpawnX = reader.ReadInt16();
+                        who.TransferConnection.WorldSpawnY = reader.ReadInt16();
 
                        
-                        who.Connection.SendData(PacketTypes.TileGetSection, null, -1, -1);
+                        who.TransferConnection.SendData(PacketTypes.TileGetSection, null, -1, -1);
 
-                        who.Connection.SendData(PacketTypes.ClientUUID, who.Player.UUID);
+                        who.TransferConnection.SendData(PacketTypes.ClientUUID, who.Player.UUID);
 
-                        who.Connection.SendData(PacketTypes.ItemOwner, null, 400, 255);
+                        who.TransferConnection.SendData(PacketTypes.ItemOwner, null, 400, 255);
                         return 0;
                     }
                 case PacketTypes.PlayerSpawnSelf:
@@ -446,36 +471,38 @@ namespace TProxy.Packets
                         who.State = PlayerState.onWorld;
 
 
-                        MemoryStream spawnSelf = Serialize(PacketTypes.PlayerSpawn, null, who.Player.playerid, number2: who.Connection.WorldSpawnX, number3: who.Connection.WorldSpawnY, 0 , 1);
-                        who.Connection.Tcp.Send(spawnSelf.ToArray(), spawnSelf.ToArray().Length, System.Net.Sockets.SocketFlags.None);
+                        MemoryStream spawnSelf = Serialize(PacketTypes.PlayerSpawn, null, who.Player.playerid, number2: who.TransferConnection.WorldSpawnX, number3: who.TransferConnection.WorldSpawnY, 0 , 1);
+                        who.TransferConnection.Tcp.Send(spawnSelf.ToArray(), spawnSelf.ToArray().Length, System.Net.Sockets.SocketFlags.None);
 
                         who.LastChange = DateTime.Now;
 
-                        who.SendData(PacketTypes.Teleport, null, 0, who.Player.playerid, who.Connection.WorldSpawnX * 16, who.Connection.WorldSpawnY * 16 - 3 * 16, 1);
+                        who.SendData(PacketTypes.Teleport, null, 0, who.Player.playerid, who.TransferConnection.WorldSpawnX * 16, who.TransferConnection.WorldSpawnY * 16 - 3 * 16, 1);
 
                         return 2;
                     }
                 case PacketTypes.ContinueConnecting:
                     {
-                        Utils.ClearPlayers(who);
-                        Utils.ClearNPCs(who);
-                        Utils.ClearItems(who);
+                        who.ClearPlayers();
+                        who.ClearNPCs();
+                        who.ClearItems();
+                        who.ClearPylons();
+                        
 
                         who.Player.playerid = reader.ReadByte();
 
                         MemoryStream apperance = SerializeApperance(who.Player);
-                        who.Connection.Tcp.Send(apperance.ToArray(), apperance.ToArray().Length, System.Net.Sockets.SocketFlags.None);
+                        who.TransferConnection.Tcp.Send(apperance.ToArray(), apperance.ToArray().Length, System.Net.Sockets.SocketFlags.None);
 
-                        who.Connection.SendData(PacketTypes.ContinueConnecting2);
+                        who.TransferConnection.SendData(PacketTypes.ContinueConnecting2);
 
                         return 0;
                     }
                 case PacketTypes.Disconnect:
                     {
                         string text = NetworkText.Deserialize(reader).ToString();
-                        who.SendMessage($"[c/52e092:{who.Connection.Name}] - Wyrzucono: \n{text}", 255, 255, 255);
+                        who.SendMessage($"[c/52e092:{who.TransferConnection.Name}] - Wyrzucono: \n{text}", 255, 255, 255);
                         who.State = PlayerState.inVoid;
-                        who.Connection.Tcp.Close();
+                        who.TransferConnection.Tcp.Close();
                         return 1;
                     }
                 default:
@@ -546,6 +573,15 @@ namespace TProxy.Packets
                         who.State = PlayerState.onWorld;
                         return false;
                     }
+                case PacketTypes.LoadNetModule:
+                {
+                    if (reader.ReadUInt16() == (ushort) NetModuleType.TeleportPylonModule)
+                    {
+                        Console.WriteLine("Pylon module from Server");
+                    }
+
+                    return false;
+                }
                 case PacketTypes.ContinueConnecting:
                     {
                         who.Player.playerid = reader.ReadByte();
