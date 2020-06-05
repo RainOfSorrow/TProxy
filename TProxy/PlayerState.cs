@@ -3,7 +3,7 @@
     enum PlayerState
     {
         Connecting = 0,
-        onWorld = 1,
-        inVoid = 2
+        OnWorld = 1,
+        InVoid = 2,
     }
 }

@@ -26,8 +26,7 @@ namespace TProxy
 
         private readonly byte[] _buffer = new byte[131070];
 
-        public volatile bool IsConnected;
-        public volatile bool OnConnect;
+        public volatile bool IsEstablished;
 
         public DateTime LastChange = DateTime.UtcNow;
 
@@ -45,7 +44,7 @@ namespace TProxy
             this.Tcp = tcp;
             this.Tcp.NoDelay = true;
             Ip = ((IPEndPoint)this.Tcp.RemoteEndPoint).Address.ToString();
-            IsConnected = true;
+            IsEstablished = false;
 
             slot = 0;
 
@@ -63,10 +62,8 @@ namespace TProxy
             }
             catch (Exception e)
             {
-                IsConnected = false;
                 TProxy.AvalibleClient[index] = true;
                 Console.WriteLine($"Client Create: {e.Message}\n{e.StackTrace}");
-                IsConnected = false;
                 TProxy.AvalibleClient[index] = true;
                 return;
             }
@@ -84,6 +81,7 @@ namespace TProxy
                 Connection.Tcp.NoDelay = true;
                 Connection.Name = TProxy.Config.Servers[0].Name;
                 Connection.Port = TProxy.Config.Servers[0].Port;
+                Connection.SendData(PacketTypes.ConnectRequest);
 
                 _listenServer = new Thread(FromServer)
                 {
@@ -93,17 +91,16 @@ namespace TProxy
             }
             catch (Exception e)
             {
-
-                IsConnected = false;
                 TProxy.AvalibleClient[index] = true;
                 Console.WriteLine("Client Server Create: " + e.Message + '\n' + e.StackTrace);
-                
             }
 
         }
 
         private void Listener(object port)
         {
+            if (!IsEstablished)
+                Thread.Sleep(10);
             try
             {
                 var lengthBuffer = new byte[2];
@@ -126,16 +123,10 @@ namespace TProxy
                     }
 
 
-                    Console.WriteLine("CLIENT -> " + packetType);
+                    //Console.WriteLine("CLIENT -> " + packetType);
 
                     if (PacketManager.DeserializeFromPlayer(packetType, _buffer.Take(dataLength).ToArray(), this) ||
                         InTransfer) continue;
-                    while (Connection?.Tcp == null)
-                    {
-                        Connection?.SendData(PacketTypes.ConnectRequest);
-                        Thread.Sleep(15);
-                    }
-                    Try_01:
                     try
                     {
                         if (Connection.Tcp.Connected)
@@ -146,7 +137,7 @@ namespace TProxy
                         }
                     } catch (SocketException)
                     {
-                        goto Try_01;
+
                     }
 
                 }
@@ -158,8 +149,7 @@ namespace TProxy
 
 
             Console.WriteLine($"({Ip}) disconnected. [Exit]");
-
-            IsConnected = false;
+            
             TProxy.AvalibleClient[index] = true;
             try
             {
@@ -178,9 +168,9 @@ namespace TProxy
 
         private void FromServer(object port)
         {
+            IsEstablished = true;
             try
             {
-                OnConnect = true;
                 Connection.Buffer = new byte[131070];
                 var lengthBuffer = new byte[2];
                 var packetTypeBuffer = new byte[1];
@@ -223,16 +213,6 @@ namespace TProxy
                     }
                 }
             }
-            catch (SocketException e)
-            {
-                if (e.ErrorCode != 10053 || e.ErrorCode != 43 || e.ErrorCode != 104 || e.ErrorCode != 32)
-                {
-                    Console.WriteLine("Server Listen: " + e.Message + '\n' + e.StackTrace + "\n\n" + e.ErrorCode);
-                }
-            }
-            catch (ObjectDisposedException)
-            {
-            }
             catch (Exception)
             {
                 //Ignore
@@ -241,8 +221,6 @@ namespace TProxy
 
             try
             {
-
-                OnConnect = false;
 
                 if (Connection.Tcp.Connected)
                     Connection.Tcp.Close();
@@ -254,6 +232,8 @@ namespace TProxy
             {
                 // ignored
             }
+
+            State = PlayerState.InVoid;
         }
 
         private void Transfer(object port)
@@ -282,6 +262,9 @@ namespace TProxy
             Connection.Tcp?.Close();
 
             Console.WriteLine($"({Ip}) -> [{(int)port}]");
+
+            while (State != PlayerState.InVoid)
+                Thread.Sleep(15);
             
             
             SendData(PacketTypes.Teleport, null, 0, Player.playerid, 64 * 16, 64 * 16, 3);
@@ -313,16 +296,17 @@ namespace TProxy
                     var readed = 0;
                     while (dataLength - readed != 0)
                     {
-                        if (TransferConnection.Tcp.Available < 1)
-                            Thread.Sleep(10);
-
                         if (!TransferConnection.Tcp.Connected)
                             throw new Exception("Disconnected");
+                        
+                        if (TransferConnection.Tcp.Available < 1)
+                            Thread.Sleep(10);
+                        
 
                         readed += TransferConnection.Tcp.Receive(TransferConnection.Buffer, readed, dataLength - readed, SocketFlags.None);
                     }
 
-                    Console.WriteLine(packetType);
+                    //Console.WriteLine(packetType);
 
                     //2 -> Send packet to client and then go to NormalLoop
                     //1 -> Continue loop but don't send packet to Client
@@ -371,7 +355,6 @@ namespace TProxy
         {
             SendData(PacketTypes.Disconnect, message);
             Console.WriteLine($"({Ip}) disconnected. [{code}]");
-            IsConnected = false;
             Tcp.Close();
         }
 

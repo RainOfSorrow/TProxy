@@ -26,7 +26,7 @@ namespace TProxy.Packets
                     {
                         case PacketTypes.ConnectRequest:
                             {
-                                binary.Write("Terraria" + (object)228);
+                                binary.Write("Terraria" + (object)230);
                                 break;
                             }
                         case PacketTypes.Disconnect:
@@ -300,7 +300,7 @@ namespace TProxy.Packets
                         break;
                     }
                     default:
-                        throw new NotImplementedException("We don't support that ModuleType or that module doesn't exists.");
+                        break;
                 }
             }
             return mem;
@@ -339,9 +339,9 @@ namespace TProxy.Packets
                                     {
                                         who.SendMessage("[c/595959:<] [c/52e092:TProxy] [c/595959:>]  Znajdujesz sie juz na tym serwerze.", 255, 0, 0);
                                     }
-                                    else if ((DateTime.Now - who.LastChange).TotalMilliseconds < 5000)
+                                    else if ((DateTime.Now - who.LastChange).TotalMilliseconds < 3000)
                                     {
-                                        who.SendMessage($"[c/595959:<] [c/52e092:TProxy] [c/595959:>]  Ochlon z przelaczaniem, sprobuj za {Math.Round((5000 - (DateTime.Now - who.LastChange).TotalMilliseconds) / 1000, 1)}s.", 255, 0, 0);
+                                        who.SendMessage($"[c/595959:<] [c/52e092:TProxy] [c/595959:>]  Ochlon z przelaczaniem, sprobuj za {Math.Round((3000 - (DateTime.Now - who.LastChange).TotalMilliseconds) / 1000, 1)}s.", 255, 0, 0);
                                     }
                                     else
                                     {
@@ -424,13 +424,14 @@ namespace TProxy.Packets
                     }
                 case PacketTypes.ConnectRequest:
                     {
-                        Try_02:
                         try
                         {
-                            who.Connection.SendData(PacketTypes.ConnectRequest);
                             who.Connection.SendProxyData(ProxyMessage.UpdateIP, who.Ip);
                         }
-                        catch (NullReferenceException) { Thread.Sleep(10); goto Try_02; }
+                        catch (Exception)
+                        {
+                            //ignore
+                        }
                         return true;
                     }
                 default:
@@ -468,13 +469,14 @@ namespace TProxy.Packets
                     }
                 case PacketTypes.PlayerSpawnSelf:
                     {
-                        who.State = PlayerState.onWorld;
+                        who.State = PlayerState.OnWorld;
 
 
                         MemoryStream spawnSelf = Serialize(PacketTypes.PlayerSpawn, null, who.Player.playerid, number2: who.TransferConnection.WorldSpawnX, number3: who.TransferConnection.WorldSpawnY, 0 , 1);
                         who.TransferConnection.Tcp.Send(spawnSelf.ToArray(), spawnSelf.ToArray().Length, System.Net.Sockets.SocketFlags.None);
 
                         who.LastChange = DateTime.Now;
+                        
 
                         who.SendData(PacketTypes.Teleport, null, 0, who.Player.playerid, who.TransferConnection.WorldSpawnX * 16, who.TransferConnection.WorldSpawnY * 16 - 3 * 16, 1);
 
@@ -485,7 +487,7 @@ namespace TProxy.Packets
                         who.ClearPlayers();
                         who.ClearNPCs();
                         who.ClearItems();
-                        who.ClearPylons();
+                        //who.ClearPylons();
                         
 
                         who.Player.playerid = reader.ReadByte();
@@ -501,7 +503,7 @@ namespace TProxy.Packets
                     {
                         string text = NetworkText.Deserialize(reader).ToString();
                         who.SendMessage($"[c/52e092:{who.TransferConnection.Name}] - Wyrzucono: \n{text}", 255, 255, 255);
-                        who.State = PlayerState.inVoid;
+                        who.State = PlayerState.InVoid;
                         who.TransferConnection.Tcp.Close();
                         return 1;
                     }
@@ -523,11 +525,11 @@ namespace TProxy.Packets
             {
                 case PacketTypes.Disconnect:
                     {
-                        if (who.State == PlayerState.onWorld)
+                        if (who.State == PlayerState.OnWorld)
                         {
                             string text = NetworkText.Deserialize(reader).ToString();
                             who.SendMessage($"[c/52e092:{who.Connection.Port}] - [c/989898:Wyrzucono] [c/595959:»]\n{text}", 128, 128, 128);
-                            who.State = PlayerState.inVoid;
+                            who.State = PlayerState.InVoid;
                             who.Connection.Tcp.Close();
                             return true;
                         }
@@ -549,19 +551,9 @@ namespace TProxy.Packets
                             return true;
                         else if (text.StartsWith(">|"))
                         {
-                            string status = text.Remove(0,3);
-                            
-                            if (text[2] == 'f')
-                            {
+                            string status = text.Remove(0,2);
 
-
-                                who.SendData(PacketTypes.Status, $"{RepeatLineBreaks(75)} {CreateCenteredStatus("« Powelder »   ", 20)} \n {status}", 2);
-                            }
-                            else if (text[2] == 't')
-                            {
-                                who.SendData(PacketTypes.Status, RepeatLineBreaks(75) + status, 2);
-                            }
-                                
+                            who.SendData(PacketTypes.Status, status, 0, 3);
                         }
                         
 
@@ -570,7 +562,7 @@ namespace TProxy.Packets
                     }
                 case PacketTypes.PlayerSpawnSelf:
                     {
-                        who.State = PlayerState.onWorld;
+                        who.State = PlayerState.OnWorld;
                         return false;
                     }
                 case PacketTypes.LoadNetModule:
@@ -593,30 +585,7 @@ namespace TProxy.Packets
             return false;
         }
 
-
-        private static string RepeatLineBreaks(int number)
-        {
-            StringBuilder stringBuilder = new StringBuilder();
-            for (int i = 0; i < number; i++)
-            {
-                stringBuilder.Append("\r\n");
-            }
-            return stringBuilder.ToString();
-        }
-
-        private static string CreateCenteredStatus(string text, int width)
-        {
-            // ReSharper disable once HeapView.ObjectAllocation.Evident
-
-            int append = (width - text.Length) / 2;
-            
-            for (int i = 0; i < append; i++)
-            {
-                text.Prepend(' ');
-                text.Append(' ');
-            }
-            return text;
-
-        }
+        
+        
     }
 }
